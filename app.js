@@ -4,6 +4,7 @@ const morgan = require('morgan');
 const multer = require('multer');
 const textract = require('textract');
 const fs = require('fs');
+const path = require('path');
 
 const mongoose = require('mongoose');
 mongoose.connect('mongodb://martintan:' + 
@@ -21,21 +22,17 @@ app.use(express.json());
 app.use('/documents', express.static('documents'));
 
 const upload = multer({
-  dest: '../../documents'
+  dest: 'documents'
   // you might also want to set some limits: https://github.com/expressjs/multer#limits
 });
 
 app.post('/api/upload', upload.single('file'), (req, res, next) => {
   console.log(req.file);
-  fs.readFile(req.file.path, (err, data) => {
-    if (err) return res.status(500).json({ error: err });
-    textract.fromBufferWithMime(req.file.mimetype, data, (err, text) => {
-      if (err) {
-        console.log(err);
-        return res.status(500).json({ error: err });
-      }
-      res.status(200).json({ text });
-    });
+  const targetPath = path.join(__dirname, req.file.destination, req.file.originalname);
+  const relativePath = path.join('/', req.file.destination, req.file.originalname);
+  fs.rename(req.file.path, targetPath, err => {
+    if (err) res.status(500).json({ message: 'Something went wrong' });
+    res.status(200).json({ file: relativePath, message: 'File uploaded!' });
   });
 });
 
